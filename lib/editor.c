@@ -554,7 +554,12 @@ editor_open (state_t *state, char *filename)
 
     select_syntax(state);
 
-    FILE *fp = fopen(filename, "r");
+    /*
+     * NOTE: here we are opening the file using "a+" as mode so the file will
+     * be created if it doesn't exist already.
+     */
+    FILE *fp = fopen(filename, "a+");
+
     if (!fp)
         error("%s(): can't open %s for reading", __func__, filename);
     
