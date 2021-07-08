@@ -63,7 +63,7 @@ void editor_open (state_t *, char *);
 
 void draw_rows (state_t *, buff_t *);
 
-int update_syntax (state_t *, row_t *);
+void update_syntax (state_t *, row_t *);
 
 void editor_insert_char (state_t *, int);
 

@@ -141,7 +141,7 @@ editor_save (state_t *state)
     char tmp[] = ".tmpfileXXXXXX";
     int fd = mkstemp(tmp);
     
-    ssize_t total;
+    ssize_t total = 0;
     if (fd != -1)
     {
         unsigned i;
@@ -220,7 +220,7 @@ select_syntax (state_t *state)
                 for (filerow = 0; filerow < state->numrows; filerow ++)
                 {
                     int index = filerow;
-                    while (update_syntax(state, &state->rows[index ++]));
+                    update_syntax(state, &state->rows[filerow]);
                 }
 
                 return;
@@ -258,139 +258,149 @@ refresh_screen (state_t *state)
     buff_free(buf); 
 }
 
-int
+void
 update_syntax (state_t *state, row_t *row)
 {
-    
     syntax_t *syntax = state->syntax;
-
-    if (row->hlt)
-        row->hlt = (unsigned char *) realloc(row->hlt, row->rsize);
-    else
-        row->hlt = (unsigned char *) malloc(row->rsize);
-    memset(row->hlt, HL_NORMAL, row->rsize);
-    
     if (!syntax)
-        return 0;
+            return;
     
-    char **keywords = syntax->keywords;
-    
-    char *scs = syntax->singleline_comment_start;
-    char *mcs = syntax->ml_comment_start;
-    char *mce = syntax->ml_comment_end;
+    int repeat = 1;
 
-    int scs_len = scs ? strlen(scs) : 0;
-    int mcs_len = mcs ? strlen(mcs) : 0;
-    int mce_len = mce ? strlen(mce) : 0;
-
-    int i = 0, prev_sep = 1, in_string = 0;
-    int in_comment = (row->index > 0 && state->rows[row->index - 1].comment);
-
-    while (i  < row->rsize)
+    while (repeat)
     {
-        char c = row->render[i];
-        unsigned prev_hl = (i > 0) ? row->hlt[i - 1] : HL_NORMAL;
-        if (scs_len && ! in_string && !in_comment)
-        {
-            if (!strncmp(&row->render[i], scs, scs_len))
-            {
-                memset(&row->hlt[i], HL_COMMENT, row->rsize - i);
-                break;
-            }
-        }
-        if (mcs_len && mce_len && !in_string)
-        {
-            if (in_comment)
-            {
-                row->hlt[i] = HL_COMMENT;
-                if (!strncmp(&row->render[i], mce, mce_len))
-                {
-                    memset(&row->hlt[i], HL_MLCOMMENT, mce_len);
-                    i += mce_len;
-                    in_comment = 0;
-                    prev_sep = 1;
-                    continue;
-                }
-                i ++;
-                continue;
+        set_status_message(state, "Updating row %d/%d", row->index, state->numrows);
+        if (row->hlt)
+            row->hlt = (unsigned char *) realloc(row->hlt, row->rsize);
+        else
+            row->hlt = (unsigned char *) malloc(row->rsize);
+        memset(row->hlt, HL_NORMAL, row->rsize);
+        
+        char **keywords = syntax->keywords;
+        
+        char *scs = syntax->singleline_comment_start;
+        char *mcs = syntax->ml_comment_start;
+        char *mce = syntax->ml_comment_end;
 
-            }
-            else if (!strncmp(&row->render[i], mcs, mcs_len))
-            {
-                memset(&row->hlt[i], HL_MLCOMMENT, mcs_len);
-                i += mcs_len;
-                in_comment = 1;
-                continue;
-            }
-        }
+        int scs_len = scs ? strlen(scs) : 0;
+        int mcs_len = mcs ? strlen(mcs) : 0;
+        int mce_len = mce ? strlen(mce) : 0;
 
-        if (syntax->flags & HL_HIGHLIGHT_STRINGS)
-        {
-            if (in_string)
-            {
-                row->hlt[i] = HL_STRING;
-                if (c == '\\' && i + 1 < row->rsize)
-                {
-                    row->hlt[i + 1] = HL_STRING;
-                    i += 2;
-                    continue;
-                }
-                if (c == in_string)
-                    in_string = 0;
-                i ++;
-                prev_sep = 1;
-                continue;
-            }
-            else if (c == '"' || c == '\'')
-            {
-                in_string = c;
-                row->hlt[i] = HL_STRING;
-                i ++;
-                continue;
-            }
-        }
-        if (syntax->flags & HL_HIGHLIGHT_NUMBERS)
-        {
-            if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
-                (c == '.' && prev_hl == HL_NUMBER))
-            {
-                row->hlt[i] = HL_NUMBER;
-                i ++;
-                prev_sep = 0;
-                continue;
-            }
-        }
+        int i = 0, prev_sep = 1, in_string = 0;
+        int in_comment = (row->index > 0 &&
+                         state->rows[row->index - 1].comment);
 
-        if (prev_sep)
+        while (i  < row->rsize)
         {
-            int j;
-            for (j = 0; keywords[j]; j++)
+            char c = row->render[i];
+            unsigned prev_hl = (i > 0) ? row->hlt[i - 1] : HL_NORMAL;
+            if (scs_len && ! in_string && !in_comment)
             {
-                int klen = strlen(keywords[j]);
-                int kw2 = (keywords[j][klen - 1] == '|');
-                if (kw2)
-                    klen --;
-                if (!strncmp(&row->render[i], keywords[j], klen) && 
-                    is_separator(row->render[i + klen]))
+                if (!strncmp(&row->render[i], scs, scs_len))
                 {
-                    memset(&row->hlt[i], kw2 ? HL_KEYWORD2 : HL_KEYWORD1,
-                           klen);
-                    i += klen;
+                    memset(&row->hlt[i], HL_COMMENT, row->rsize - i);
                     break;
                 }
             }
-            if (keywords[j] != NULL)
+            if (mcs_len && mce_len && !in_string)
             {
-                prev_sep = 0;
-                continue;
+                if (in_comment)
+                {
+                    row->hlt[i] = HL_COMMENT;
+                    if (!strncmp(&row->render[i], mce, mce_len))
+                    {
+                        memset(&row->hlt[i], HL_MLCOMMENT, mce_len);
+                        i += mce_len;
+                        in_comment = 0;
+                        prev_sep = 1;
+                        continue;
+                    }
+                    i ++;
+                    continue;
+                }
+                else if (!strncmp(&row->render[i], mcs, mcs_len))
+                {
+                    memset(&row->hlt[i], HL_MLCOMMENT, mcs_len);
+                    i += mcs_len;
+                    in_comment = 1;
+                    continue;
+                }
             }
-        }
 
-        prev_sep = is_separator(c);
-        i ++;
+            if (syntax->flags & HL_HIGHLIGHT_STRINGS)
+            {
+                if (in_string)
+                {
+                    row->hlt[i] = HL_STRING;
+                    if (c == '\\' && i + 1 < row->rsize)
+                    {
+                        row->hlt[i + 1] = HL_STRING;
+                        i += 2;
+                        continue;
+                    }
+                    if (c == in_string)
+                        in_string = 0;
+                    i ++;
+                    prev_sep = 1;
+                    continue;
+                }
+                else if (c == '"' || c == '\'')
+                {
+                    in_string = c;
+                    row->hlt[i] = HL_STRING;
+                    i ++;
+                    continue;
+                }
+            }
+            if (syntax->flags & HL_HIGHLIGHT_NUMBERS)
+            {
+                if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
+                    (c == '.' && prev_hl == HL_NUMBER))
+                {
+                    row->hlt[i] = HL_NUMBER;
+                    i ++;
+                    prev_sep = 0;
+                    continue;
+                }
+            }
+
+            if (prev_sep)
+            {
+                int j;
+                for (j = 0; keywords[j]; j++)
+                {
+                    int klen = strlen(keywords[j]);
+                    int kw2 = (keywords[j][klen - 1] == '|');
+                    if (kw2)
+                        klen --;
+                    if (!strncmp(&row->render[i], keywords[j], klen) && 
+                        is_separator(row->render[i + klen]))
+                    {
+                        memset(&row->hlt[i], kw2 ? HL_KEYWORD2 : HL_KEYWORD1,
+                            klen);
+                        i += klen;
+                        break;
+                    }
+                }
+                if (keywords[j] != NULL)
+                {
+                    prev_sep = 0;
+                    continue;
+                }
+            }
+
+            prev_sep = is_separator(c);
+            i ++;
+        }
+        
+        repeat = (row->comment != in_comment) &&
+                 (row->index + 1 < state->numrows);
+        row->comment = in_comment;
+        if (repeat)
+            row = &state->rows[row->index + 1];
+        //if (repeat)
+        //    error("%s(): repeat %d", __func__, repeat);
     }
-    
-    return (row->comment != in_comment) && (row->index + 1 < state->numrows);
 }
 
 void
@@ -400,7 +410,7 @@ insert_row(state_t *state, int index, char *text, int len)
         return;
     
     state->rows = realloc(state->rows, sizeof(row_t) * (state->numrows + 1));
-    
+    set_status_message(state, "allocating a new row");
     memmove(&state->rows[index + 1], &state->rows[index],
         sizeof(row_t) * (state->numrows - index));
     int j;
@@ -420,7 +430,7 @@ insert_row(state_t *state, int index, char *text, int len)
     state->rows[index].comment = 0;
     update_row(&state->rows[index]);
     
-    while (update_syntax(state, &state->rows[index ++]));
+    update_syntax(state, &state->rows[index]);
 
     state->numrows ++;
     state->dirty ++;
@@ -455,9 +465,12 @@ delete_row(state_t *state, int index)
 {
     if (index < 0 || index >= state->numrows)
         return;
+
     free_row(&state->rows[index]);
     memmove(&state->rows[index], &state->rows[index + 1],
-            sizeof(row_t) * (state->numrows - 1));
+            sizeof(row_t) * ((state->numrows - index) - 1));
+    state->rows = (row_t *) realloc(state->rows,
+                                    sizeof(row_t) * (state->numrows - 1));
     int j;
     for (j = index; j < state->numrows - 1; j ++)
         state->rows[j].index --;

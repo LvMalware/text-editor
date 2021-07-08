@@ -10,8 +10,11 @@ free_row (row_t *row)
         free(row->hlt);
     if (row->render)
         free(row->render);
+    
+    row->hlt = NULL;
     row->size = 0;
-    row->text = row->hlt = row->render = NULL;
+    row->text = NULL;
+    row->render = NULL;
 }
 
 void
@@ -38,7 +41,6 @@ update_row (row_t *row)
 
     row->render[i] = '\0';
     row->rsize = i;
-    //update_syntax(row)
 }
 
 void
@@ -49,7 +51,6 @@ row_delete_char (row_t *row, int index)
     memmove(&row->text[index], &row->text[index + 1], row->size - index);
     row->size --;
     update_row(row);
-    //state->dirty ++;
 }
 
 void
@@ -63,7 +64,6 @@ row_insert_char (row_t *row, int index, int c)
     row->size ++;
     row->text[index] = c;
     update_row(row);
-    //state->dirty ++;
 }
 
 void
@@ -78,14 +78,12 @@ row_insert_string (row_t *row, int index, char *str, size_t len)
     row->size += len;
     row->text[row->size] = '\0';
     update_row(row);
-    //state->dirty ++;
 }
 
 void
 row_append_string (row_t *row, char *str, size_t len)
 {
     row_insert_string(row, row->size, str, len);
-    //state->dirty ++;
 }
 
 void
@@ -102,6 +100,5 @@ row_delete_interval (row_t *row, int index, size_t count)
     row->text = (char *) realloc(row->text, row->size + 1);
     row->text[row->size] = '\0';
     update_row(row);
-    //state->dirty ++;
 }
 
