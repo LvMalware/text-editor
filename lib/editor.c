@@ -219,7 +219,6 @@ select_syntax (state_t *state)
                 int filerow;
                 for (filerow = 0; filerow < state->numrows; filerow ++)
                 {
-                    int index = filerow;
                     update_syntax(state, &state->rows[filerow]);
                 }
 
