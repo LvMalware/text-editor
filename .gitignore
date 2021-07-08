@@ -1,1 +1,6 @@
 editor
+.anjuta/
+.anjuta_sym_db.db
+myeditor.anjuta
+debug.log
+*~

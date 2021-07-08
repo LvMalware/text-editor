@@ -397,8 +397,6 @@ update_syntax (state_t *state, row_t *row)
         row->comment = in_comment;
         if (repeat)
             row = &state->rows[row->index + 1];
-        //if (repeat)
-        //    error("%s(): repeat %d", __func__, repeat);
     }
 }
 
@@ -409,7 +407,7 @@ insert_row(state_t *state, int index, char *text, int len)
         return;
     
     state->rows = realloc(state->rows, sizeof(row_t) * (state->numrows + 1));
-    set_status_message(state, "allocating a new row");
+    
     memmove(&state->rows[index + 1], &state->rows[index],
         sizeof(row_t) * (state->numrows - index));
     int j;
@@ -443,9 +441,6 @@ editor_new_line (state_t *state)
         insert_row(state, state->cy, "", 0);
     else
     {
-        /*
-         * watch out for errors here... (what if cy = numrows ?)
-         */
         row_t *row = &state->rows[state->cy];
         insert_row(state, state->cy + 1,
                   &row->text[state->cx], row->size - state->cx);
@@ -585,19 +580,23 @@ editor_open (state_t *state, char *filename)
 void
 draw_rows (state_t *state, buff_t *buf)
 {
+    
     int y;
     for (y = 0; y < state->screen_rows; y ++)
     {
         int filerow = y + state->roffset;
         if (filerow < state->numrows)
         {
+            
             int len = state->rows[filerow].rsize - state->coffset;
+            
             if (len < 0)
                 len = 0;
             if (len > state->screen_cols)
                 len = state->screen_cols;
             char *c = &state->rows[filerow].render[state->coffset];
             unsigned char *hl = &state->rows[filerow].hlt[state->coffset];
+            
             int current_color = -1;
             int j;
             for (j = 0; j < len; j++)
@@ -616,7 +615,7 @@ draw_rows (state_t *state, buff_t *buf)
                         buff_append(buf, str, clen);
                     }
                 }
-                else if (hl[j] == HL_NORMAL)
+                else if (!hl || hl[j] == HL_NORMAL)
                 {
                     if (current_color != -1) {
                         buff_append(buf, "\x1b[39m", 5);
