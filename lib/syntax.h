@@ -40,26 +40,8 @@ int syntax_to_color (int);
 
 /* HLDB */
 
-static char *C_HL_extensions[] = { ".c", ".h", ".cpp", ".hpp", NULL };
+extern syntax_t HLDB[];
 
-static char *C_HL_keywords[] = {
-    "switch", "if", "while", "for", "break", "continue", "return", "else",
-    "extern", "class", "case", "struct", "union", "typedef", "static",
-    "enum", "#include", "#define", "#if", "#endif", "#ifdef", "#ifndef",
-    "int|", "long|", "double|", "float|", "char|", "const|", "volatile|", 
-    "unsigned|", "signed|", "short|", "void|", "NULL|", NULL
-};
-
-static syntax_t HLDB[] = {
-    {
-        "C/C++",
-        C_HL_extensions,
-        C_HL_keywords,
-        "//", "/*", "*/",
-        HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
-    }
-};
-
-#define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
+extern int HLDB_ENTRIES;
 
 #endif /* syntax.h */

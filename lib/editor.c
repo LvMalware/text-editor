@@ -268,7 +268,6 @@ update_syntax (state_t *state, row_t *row)
 
     while (repeat)
     {
-        set_status_message(state, "Updating row %d/%d", row->index, state->numrows);
         if (row->hlt)
             row->hlt = (unsigned char *) realloc(row->hlt, row->rsize);
         else
